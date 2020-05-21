@@ -1,0 +1,97 @@
+from bs4 import BeautifulSoup
+from urllib.request import Request, urlopen
+import pandas as pd
+import time
+reviews_body_list = []
+names_list = []
+rating_list = []
+title_list = []
+date_list = []
+def review_scraper(url='None', start_page=1, end_page=1, sleep_time=3):
+
+
+    if end_page < start_page:
+        print("Start page cannot be greater than end page. Please try again.")
+        exit()
+
+
+    while start_page <= end_page:
+
+        url = url[:-1] + str(start_page)
+        req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        reader = urlopen(req).read()
+
+        parsed_response = BeautifulSoup(reader, "lxml")
+
+        reviews = parsed_response.find_all("div", attrs={"class": "a-row a-spacing-small review-data"})
+
+        for review in reviews:
+            body = str(review).split("data-hook=\"review-body\">")[1].split('</span>')[0]
+            body = body.replace("<br/><br/>", " ").replace("<br/>", ". ").replace('<span class="">', "").replace(":.", ":").replace("..", ".").replace('\n<span>', " ")
+            body = body.capitalize()
+            reviews_body_list.append(body)
+
+        name_container = parsed_response.find_all("div", attrs={"class": "a-profile-content"})
+        for i in range(2, len(name_container)):
+            names_list.append(name_container[i].text)
+ 
+        rating_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        for item in rating_container:
+            rating_list.append(str(item).split("<span class=\"a-icon-alt\">")[1].split("</span>")[0].split(" ")[0])
+
+        title_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        for item in title_container:
+            title_list.append(str(item).split('<span>')[1].split("</span>")[0].capitalize())
+            #title_list.append(str(item).split('<data-hook="review-title">')[1].split("<span>")[0].capitalize())
+
+        date_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        for item in date_container:    
+            date_list.append(str(item).split('data-hook="review-date">')[1].split("</span>")[0])
+            #date_list.append(str(item).split('data-hook="review-date">')[1].split("</span>")[0])
+        # size_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        # for item in size_container:
+        #     size_list.append(str(item).split('formatType=current_format">')[1].split('<i aria-label="|" ')[0].split(": ")[1])
+        #
+        # color_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        # for item in color_container:
+        #     color_list.append(str(item).split('role="img"></i>')[1].split('</a>')[0].split(": ")[1])
+
+        # def build_verified_purchase(item):
+        #     # Yes = purchased, No = not purchased
+        #     try:
+        #         if item == 'Verified Purchase':
+        #             return "Yes"
+        #     except:
+        #         return "No"
+
+        # verified_purchase_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        # for item in verified_purchase_container:
+        #     verified_list.append(build_verified_purchase(str(item).split('data-hook="avp-badge">')[1].split("</span>")[0]))
+
+        # votes_container = parsed_response.find_all("div", attrs={"class": "a-section review aok-relative"})
+        # for item in votes_container:
+        #     votes_list.append(str(item).split('data-hook="helpful-vote-statement">')[1].split('</span>')[0].split(' ')[0])
+
+        sleep_scrap(start_page, sleep_time)
+        start_page += 1
+def create_data_frame():
+    # dict = {'Names': names_list , 'Ratings' : rating_list, 'Title' : title_list, 'Date' : date_list, 'Size': size_list, 'Color' : color_list,
+    #         'Verified Purchase' : verified_list, 'People found this helpful': votes_list,'Review':reviews_body_list}
+    dict = {'Names': names_list , 'Ratings' : rating_list, 'Title' : title_list, 'Date' : date_list, 'Review':reviews_body_list}
+    return pd.DataFrame(dict)
+def export_to_csv(input_data_frame, csv_name):
+    input_data_frame.to_csv(str(csv_name), header=True, index=False)
+def sleep_scrap(start_page, sleep_time):
+    print("Scraped page : ", start_page)
+    print("Sleeping for : {} seconds".format(sleep_time))
+    time.sleep(sleep_time)
+def df_head(data_frame):
+    print(data_frame.head())
+if __name__ == "__main__":
+        url = 'https://www.amazon.in/OnePlus-Mirror-Black-128GB-Storage/product-reviews/B07DJD1Y3Q/ref=cm_cr_getr_d_paging_btm_prev_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1'
+        review_scraper(url, 1, 10, 3)
+        df = create_data_frame()
+        export_to_csv(df, 'train1.csv')
+        df_head(df)
+        print("Done With Work...!!!")
+
